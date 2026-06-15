@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Block Blast - Web Versiyonu</title>
+    <title>Block Blast - Kesin Çözüm</title>
     <style>
         * {
             box-sizing: border-box;
@@ -110,14 +110,15 @@
             border-radius: 4px;
         }
 
+        /* DÜZELTİLEN YER BURASI */
         #drag-overlay {
             position: fixed;
-            pointer-events: none;
             display: grid;
             gap: 2px;
             z-index: 9999;
             display: none;
             opacity: 0.95;
+            pointer-events: none; /* Bu parça artık farenin altındaki hücreyi görmesini engellemez */
         }
 
         .color-1 { background: #ef4444; }
@@ -375,7 +376,6 @@ function onDragEnd(e) {
     dragOverlay.style.display = "none";
     document.getElementById(`holder-${activeDrag.index}`).style.opacity = "1";
 
-    // KESİN ÇÖZÜM: Parçanın tam orta koordinatını bularak tahtaya hizalıyoruz
     const dragRect = dragOverlay.getBoundingClientRect();
     const dropX = dragRect.left + (dragRect.width / 2);
     const dropY = dragRect.top + (dragRect.height / 2);
