@@ -3,349 +3,526 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Flappy Kaan - Mobil & Masaüstü Versiyon</title>
+    <title>Block Blast - Web Versiyonu</title>
     <style>
         * {
-            touch-action: manipulation;
+            box-sizing: border-box;
             user-select: none;
             -webkit-user-select: none;
-            -webkit-touch-callout: none;
+            touch-action: none;
         }
 
         body {
             margin: 0;
-            overflow: hidden;
-            background: #1a1a1a;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            padding: 0;
+            background: #0f172a;
+            color: white;
             font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
         }
 
-        canvas {
-            display: block;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            max-width: 100vw;
-            max-height: 100vh;
-            object-fit: contain;
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .score-container {
+            display: flex;
+            gap: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #1e293b;
+            padding: 8px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .score-val {
+            color: #38bdf8;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 4px;
+            background: #1e293b;
+            padding: 8px;
+            border-radius: 12px;
+            width: 90vw;
+            max-width: 400px;
+            height: 90vw;
+            max-height: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .cell {
+            background: #334155;
+            border-radius: 6px;
+            transition: background 0.1s ease, transform 0.1s ease;
+        }
+
+        .cell.filled {
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.4);
+        }
+
+        #pieces-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            width: 90vw;
+            max-width: 400px;
+            height: 120px;
+            margin-top: 20px;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 10px;
+        }
+
+        .piece-holder {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .piece {
+            display: grid;
+            gap: 2px;
+            position: absolute;
+            cursor: grab;
+            transform-origin: center center;
+            transition: transform 0.1s ease;
+        }
+
+        .piece:active {
+            cursor: grabbing;
+        }
+
+        .piece-cell {
+            border-radius: 4px;
+        }
+
+        #drag-overlay {
+            position: fixed;
+            pointer-events: none;
+            display: grid;
+            gap: 2px;
+            z-index: 9999;
+            display: none;
+            opacity: 0.95;
+        }
+
+        .color-1 { background: #ef4444; }
+        .color-2 { background: #3b82f6; }
+        .color-3 { background: #10b981; }
+        .color-4 { background: #f59e0b; }
+        .color-5 { background: #a855f7; }
+
+        #game-over-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 23, 42, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            display: none;
+        }
+
+        .game-over-box {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+            border: 2px solid #334155;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .btn-restart {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-restart:hover {
+            background: #1d4ed8;
         }
     </style>
 </head>
 <body>
 
-<canvas id="gameCanvas"></canvas>
+    <div class="header">
+        <h1 style="margin: 5px 0; font-size: 28px; color: #38bdf8;">BLOCK BLAST</h1>
+        <div class="score-container">
+            <div>Skor: <span id="score" class="score-val">0</span></div>
+            <div>En Yüksek: <span id="high-score" class="score-val">0</span></div>
+        </div>
+    </div>
+
+    <div id="board"></div>
+
+    <div id="pieces-container">
+        <div class="piece-holder" id="holder-0"></div>
+        <div class="piece-holder" id="holder-1"></div>
+        <div class="piece-holder" id="holder-2"></div>
+    </div>
+
+    <div id="drag-overlay"></div>
+
+    <div id="game-over-screen">
+        <div class="game-over-box">
+            <h2 style="color: #ef4444; margin-top: 0;">HAMLE KALMADI!</h2>
+            <p style="font-size: 18px;">Skorun: <span id="final-score" style="color:#38bdf8; font-weight:bold;">0</span></p>
+            <button class="btn-restart" onclick="restartGame()">Yeniden Başla</button>
+        </div>
+    </div>
 
 <script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
-canvas.width = 800;
-canvas.height = 600;
-
-// Fotoğraf Ayarı
-const playerImg = new Image();
-playerImg.src = "ben.png.jpg"; 
-let imgLoaded = false;
-playerImg.onload = () => { imgLoaded = true; };
-
-// Oyun Değişkenleri
-let bird = {
-    x: 150,
-    y: 250,
-    width: 75,
-    height: 75,
-    velocity: 0,
-    gravity: 0.4,
-    jumpStrength: -7.5,
-    angle: 0
-};
-
-let pipes = [];
-let clouds = [];
-let stars = [];
+const boardSize = 8;
+let boardState = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0));
 let score = 0;
-let highScore = localStorage.getItem("flappyKaanHighScore") || 0;
-let gameOver = false;
-let isNight = false;
+let highScore = localStorage.getItem("blockBlastHighScore") || 0;
 
-function initEnvironment() {
-    isNight = Math.random() > 0.5;
-    clouds = [];
-    stars = [];
+const blockTemplates = [
+    { structure: [[1]], color: 1 }, 
+    { structure: [[1, 1]], color: 2 }, 
+    { structure: [[1], [1]], color: 2 }, 
+    { structure: [[1, 1, 1]], color: 3 }, 
+    { structure: [[1], [1], [1]], color: 3 }, 
+    { structure: [[1, 1], [1, 1]], color: 4 }, 
+    { structure: [[1, 1, 1], [0, 1, 0]], color: 5 }, 
+    { structure: [[1, 0], [1, 0], [1, 1]], color: 1 }, 
+];
+
+let currentPieces = [null, null, null];
+let activeDrag = null; 
+
+const boardEl = document.getElementById("board");
+const dragOverlay = document.getElementById("drag-overlay");
+
+function initGame() {
+    document.getElementById("high-score").innerText = highScore;
+    createBoard();
+    generateNewPieces();
+    window.addEventListener("resize", handleResize);
+}
+
+function createBoard() {
+    boardEl.innerHTML = "";
+    for (let r = 0; r < boardSize; r++) {
+        for (let c = 0; c < boardSize; c++) {
+            const cell = document.createElement("div");
+            cell.classList.add("cell");
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+            boardEl.appendChild(cell);
+        }
+    }
+    drawBoard();
+}
+
+function drawBoard() {
+    const cells = boardEl.querySelectorAll(".cell");
+    cells.forEach(cell => {
+        const r = parseInt(cell.dataset.row);
+        const c = parseInt(cell.dataset.col);
+        const val = boardState[r][c];
+        
+        cell.className = "cell";
+        cell.style.background = "";
+        
+        if (val > 0) {
+            cell.classList.add("filled", `color-${val}`);
+        }
+    });
+}
+
+function generateNewPieces() {
+    for (let i = 0; i < 3; i++) {
+        const randIndex = Math.floor(Math.random() * blockTemplates.length);
+        currentPieces[i] = JSON.parse(JSON.stringify(blockTemplates[randIndex]));
+        renderPiece(i);
+    }
+    checkGameOver();
+}
+
+function renderPiece(index) {
+    const holder = document.getElementById(`holder-${index}`);
+    holder.innerHTML = "";
     
-    for(let i = 0; i < 5; i++) {
-        clouds.push({
-            x: Math.random() * canvas.width * 1.5,
-            y: Math.random() * 150 + 30,
-            speed: Math.random() * 0.5 + 0.2,
-            size: Math.random() * 30 + 20
+    if (!currentPieces[index]) return;
+
+    const pieceData = currentPieces[index];
+    const piece = document.createElement("div");
+    piece.classList.add("piece");
+    piece.dataset.index = index;
+    
+    const rows = pieceData.structure.length;
+    const cols = pieceData.structure[0].length;
+    
+    piece.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    piece.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    
+    const cellSize = 18; 
+    piece.style.width = `${cols * cellSize + (cols-1)*2}px`;
+    piece.style.height = `${rows * cellSize + (rows-1)*2}px`;
+
+    pieceData.structure.forEach((row) => {
+        row.forEach((val) => {
+            const cell = document.createElement("div");
+            cell.style.width = `${cellSize}px`;
+            cell.style.height = `${cellSize}px`;
+            if (val === 1) {
+                cell.classList.add("piece-cell", `color-${pieceData.color}`);
+            }
+            piece.appendChild(cell);
         });
-    }
-
-    if(isNight) {
-        for(let i = 0; i < 30; i++) {
-            stars.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * 300,
-                size: Math.random() * 2 + 1
-            });
-        }
-    }
-}
-
-function jump(e) {
-    if (e) {
-        e.preventDefault();
-    }
-    if (!gameOver) {
-        bird.velocity = bird.jumpStrength;
-    }
-}
-
-// 💻 BİLGİSAYAR KONTROLLERİ
-document.addEventListener("keydown", (e) => {
-    if (e.code === "Space" || e.code === "ArrowUp") {
-        e.preventDefault();
-        jump();
-    }
-    if (e.key === "r" || e.key === "R") {
-        restartGame();
-    }
-});
-canvas.addEventListener("click", jump);
-
-// 📱 MOBİL KONTROLLER
-canvas.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    if (gameOver) {
-        restartGame();
-    } else {
-        jump();
-    }
-}, { passive: false });
-
-function restartGame() {
-    bird.y = 250;
-    bird.velocity = 0;
-    bird.angle = 0;
-    pipes = [];
-    score = 0;
-    gameOver = false;
-    initEnvironment();
-}
-
-function createPipe() {
-    const gap = 210; 
-    const minHeight = 50;
-    const maxHeight = canvas.height - gap - minHeight - 100;
-    const topHeight = Math.random() * maxHeight + minHeight;
-
-    pipes.push({
-        x: canvas.width,
-        width: 85,
-        topHeight: topHeight,
-        bottomY: topHeight + gap,
-        scored: false
-    });
-}
-
-let pipeInterval = setInterval(() => {
-    if (!gameOver) createPipe();
-}, 2500);
-
-function drawBird() {
-    ctx.save();
-    
-    let centerX = bird.x + bird.width / 2;
-    let centerY = bird.y + bird.height / 2;
-    ctx.translate(centerX, centerY);
-    
-    bird.angle = Math.min(Math.PI / 4, Math.max(-Math.PI / 7, bird.velocity * 0.06));
-    ctx.rotate(bird.angle);
-
-    ctx.beginPath();
-    ctx.arc(0, 0, bird.width / 2, 0, Math.PI * 2);
-    ctx.clip();
-
-    if (imgLoaded) {
-        ctx.drawImage(playerImg, -bird.width / 2, -bird.height / 2, bird.width, bird.height);
-    } else {
-        ctx.fillStyle = "#ffca28";
-        ctx.beginPath();
-        ctx.arc(0, 0, bird.width / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#000";
-        ctx.font = "38px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("😎", 0, 2);
-    }
-
-    ctx.restore();
-}
-
-function drawPipe(x, y, width, height, isTop) {
-    let grad = ctx.createLinearGradient(x, 0, x + width, 0);
-    grad.addColorStop(0, "#73da2c");
-    grad.addColorStop(0.3, "#9eff6b");
-    grad.addColorStop(0.7, "#58b31d");
-    grad.addColorStop(1, "#3c8210");
-    
-    ctx.fillStyle = grad;
-    ctx.fillRect(x, y, width, height);
-
-    ctx.strokeStyle = "#1e4707";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(x, y, width, height);
-
-    let capHeight = 30;
-    let capX = x - 6;
-    let capWidth = width + 12;
-    let capY = isTop ? (y + height - capHeight) : y;
-
-    ctx.fillRect(capX, capY, capWidth, capHeight);
-    ctx.strokeRect(capX, capY, capWidth, capHeight);
-}
-
-function collision(a, b) {
-    const padding = 12;
-    return (
-        a.x + padding < b.x + b.width &&
-        a.x + a.width - padding > b.x &&
-        a.y + padding < b.y + b.height &&
-        a.y + a.height - padding > b.y
-    );
-}
-
-function update() {
-    if (gameOver) return;
-
-    clouds.forEach(c => {
-        c.x -= c.speed;
-        if(c.x + c.size * 2 < 0) c.x = canvas.width + 50;
     });
 
-    bird.velocity += bird.gravity;
-    bird.y += bird.velocity;
+    holder.appendChild(piece);
+    
+    piece.addEventListener("mousedown", (e) => startDrag(e, index, false));
+    piece.addEventListener("touchstart", (e) => startDrag(e, index, true), { passive: false });
+}
 
-    if (bird.y < 0 || bird.y + bird.height > canvas.height) {
-        gameOver = true;
+function startDrag(e, index, isTouch) {
+    if (e.cancelable) e.preventDefault();
+    const pieceData = currentPieces[index];
+    if (!pieceData) return;
+
+    const point = isTouch ? e.touches[0] : e;
+    
+    activeDrag = {
+        index: index,
+        pieceData: pieceData,
+        isTouch: isTouch
+    };
+
+    dragOverlay.innerHTML = "";
+    const rows = pieceData.structure.length;
+    const cols = pieceData.structure[0].length;
+    dragOverlay.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    dragOverlay.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    
+    const boardCellWidth = (boardEl.offsetWidth - 16 - (7 * 4)) / 8; 
+    dragOverlay.style.width = `${cols * boardCellWidth + (cols - 1) * 4}px`;
+    dragOverlay.style.height = `${rows * boardCellWidth + (rows - 1) * 4}px`;
+
+    pieceData.structure.forEach((row) => {
+        row.forEach((val) => {
+            const cell = document.createElement("div");
+            if (val === 1) {
+                cell.classList.add("piece-cell", `color-${pieceData.color}`);
+            }
+            dragOverlay.appendChild(cell);
+        });
+    });
+
+    dragOverlay.style.display = "grid";
+    moveDragOverlay(point.clientX, point.clientY);
+
+    if (isTouch) {
+        window.addEventListener("touchmove", onDragMove, { passive: false });
+        window.addEventListener("touchend", onDragEnd);
+    } else {
+        window.addEventListener("mousemove", onDragMove);
+        window.addEventListener("mouseup", onDragEnd);
+    }
+    
+    document.getElementById(`holder-${index}`).style.opacity = "0.3";
+}
+
+function onDragMove(e) {
+    if (!activeDrag) return;
+    if (e.cancelable) e.preventDefault();
+    const point = activeDrag.isTouch ? e.touches[0] : e;
+    moveDragOverlay(point.clientX, point.clientY);
+}
+
+function moveDragOverlay(clientX, clientY) {
+    const offset = activeDrag.isTouch ? 70 : 30; 
+    dragOverlay.style.left = `${clientX - dragOverlay.offsetWidth / 2}px`;
+    dragOverlay.style.top = `${clientY - dragOverlay.offsetHeight - offset}px`;
+}
+
+function onDragEnd(e) {
+    if (!activeDrag) return;
+
+    if (activeDrag.isTouch) {
+        window.removeEventListener("touchmove", onDragMove);
+        window.removeEventListener("touchend", onDragEnd);
+    } else {
+        window.removeEventListener("mousemove", onDragMove);
+        window.removeEventListener("mouseup", onDragEnd);
     }
 
-    pipes.forEach(pipe => {
-        pipe.x -= 3.2;
+    dragOverlay.style.display = "none";
+    document.getElementById(`holder-${activeDrag.index}`).style.opacity = "1";
 
-        const topPipe = { x: pipe.x, y: 0, width: pipe.width, height: pipe.topHeight };
-        const bottomPipe = { x: pipe.x, y: pipe.bottomY, width: pipe.width, height: canvas.height - pipe.bottomY };
+    // KESİN ÇÖZÜM: Parçanın tam orta koordinatını bularak tahtaya hizalıyoruz
+    const dragRect = dragOverlay.getBoundingClientRect();
+    const dropX = dragRect.left + (dragRect.width / 2);
+    const dropY = dragRect.top + (dragRect.height / 2);
 
-        if (collision(bird, topPipe) || collision(bird, bottomPipe)) {
-            gameOver = true;
-        }
-
-        if (!pipe.scored && pipe.x + pipe.width < bird.x) {
-            score++;
-            pipe.scored = true;
-            if(score > highScore) {
-                highScore = score;
-                localStorage.setItem("flappyKaanHighScore", highScore);
+    const targetCell = document.elementFromPoint(dropX, dropY);
+    if (targetCell && targetCell.classList.contains("cell")) {
+        const targetRow = parseInt(targetCell.dataset.row);
+        const targetCol = parseInt(targetCell.dataset.col);
+        
+        if (canPlacePiece(activeDrag.pieceData, targetRow, targetCol)) {
+            placePiece(activeDrag.pieceData, targetRow, targetCol);
+            currentPieces[activeDrag.index] = null;
+            document.getElementById(`holder-${activeDrag.index}`).innerHTML = "";
+            
+            if (currentPieces.every(p => p === null)) {
+                generateNewPieces();
+            } else {
+                checkGameOver();
             }
         }
-    });
+    }
 
-    pipes = pipes.filter(pipe => pipe.x + pipe.width > -100);
+    activeDrag = null;
 }
 
-function draw() {
-    if(isNight) {
-        let nightGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        nightGrad.addColorStop(0, "#0c1020");
-        nightGrad.addColorStop(1, "#1d2646");
-        ctx.fillStyle = nightGrad;
-    } else {
-        let dayGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        dayGrad.addColorStop(0, "#4facfe");
-        dayGrad.addColorStop(1, "#00f2fe");
-        ctx.fillStyle = dayGrad;
+function canPlacePiece(piece, startRow, startCol) {
+    for (let r = 0; r < piece.structure.length; r++) {
+        for (let c = 0; c < piece.structure[r].length; c++) {
+            if (piece.structure[r][c] === 1) {
+                const targetR = startRow + r;
+                const targetC = startCol + c;
+                
+                if (targetR >= boardSize || targetC >= boardSize || boardState[targetR][targetC] > 0) {
+                    return false;
+                }
+            }
+        }
     }
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return true;
+}
 
-    if(isNight) {
-        ctx.fillStyle = "#ffffff";
-        stars.forEach(s => {
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-            ctx.fill();
-        });
+function placePiece(piece, startRow, startCol) {
+    let pieceScore = 0;
+    for (let r = 0; r < piece.structure.length; r++) {
+        for (let c = 0; c < piece.structure[r].length; c++) {
+            if (piece.structure[r][c] === 1) {
+                boardState[startRow + r][startCol + c] = piece.color;
+                pieceScore += 10;
+            }
+        }
+    }
+    score += pieceScore;
+    checkMatches();
+    drawBoard();
+    updateScore();
+}
+
+function checkMatches() {
+    let rowsToClear = [];
+    let colsToClear = [];
+
+    for (let r = 0; r < boardSize; r++) {
+        if (boardState[r].every(val => val > 0)) {
+            rowsToClear.push(r);
+        }
     }
 
-    ctx.fillStyle = isNight ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.65)";
-    clouds.forEach(c => {
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
-        ctx.arc(c.x + c.size * 0.6, c.y - c.size * 0.2, c.size * 1.2, 0, Math.PI * 2);
-        ctx.arc(c.x + c.size * 1.3, c.y, c.size * 0.8, 0, Math.PI * 2);
-        ctx.fill();
+    for (let c = 0; c < boardSize; c++) {
+        let colFilled = true;
+        for (let r = 0; r < boardSize; r++) {
+            if (boardState[r][c] === 0) {
+                colFilled = false;
+                break;
+            }
+        }
+        if (colFilled) {
+            colsToClear.push(c);
+        }
+    }
+
+    rowsToClear.forEach(r => {
+        boardState[r] = Array(boardSize).fill(0);
+        score += 100;
     });
 
-    pipes.forEach(pipe => {
-        drawPipe(pipe.x, 0, pipe.width, pipe.topHeight, true);
-        drawPipe(pipe.x, pipe.bottomY, pipe.width, canvas.height - pipe.bottomY, false);
+    colsToClear.forEach(c => {
+        for (let r = 0; r < boardSize; r++) {
+            boardState[r][c] = 0;
+        }
+        score += 100;
     });
+}
 
-    drawBird();
-
-    ctx.fillStyle = "white";
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 6;
-    ctx.font = "bold 50px Arial";
-    ctx.textAlign = "center";
-    ctx.strokeText(score, canvas.width / 2, 70);
-    ctx.fillText(score, canvas.width / 2, 70);
-
-    if (gameOver) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // KUTU BOYUTU SABİTLENDİ VE GENİŞLETİLDİ
-        ctx.fillStyle = "#2e3440";
-        ctx.strokeStyle = "#4c566a";
-        ctx.lineWidth = 5;
-        ctx.roundRect ? ctx.roundRect(canvas.width / 2 - 175, 130, 350, 280, 15) : ctx.fillRect(canvas.width / 2 - 175, 130, 350, 280);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = "#ff5e57";
-        ctx.font = "bold 40px Arial";
-        ctx.fillText("OYUN BİTTİ", canvas.width / 2, 185);
-
-        ctx.fillStyle = "#e5e9f0";
-        ctx.font = "24px Arial";
-        ctx.fillText("Skorun: " + score, canvas.width / 2, 240);
-        
-        ctx.fillStyle = "#ebcb8b";
-        ctx.fillText("En Yüksek Skor: " + highScore, canvas.width / 2, 280);
-
-        // YAZI BURADA 2 SATIRA BÖLÜNDÜ (HATA KESİN OLARAK ÇÖZÜLDÜ)
-        ctx.fillStyle = "#a3be8c";
-        ctx.font = "bold italic 16px Arial"; 
-        ctx.fillText("Yeniden başlamak için Ekrana Dokun", canvas.width / 2, 335);
-        
-        ctx.fillStyle = "#81a1c1";
-        ctx.font = "italic 14px Arial";
-        ctx.fillText("veya klavyeden 'R' tuşuna bas", canvas.width / 2, 365);
+function updateScore() {
+    document.getElementById("score").innerText = score;
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("blockBlastHighScore", highScore);
+        document.getElementById("high-score").innerText = highScore;
     }
 }
 
-function gameLoop() {
-    update();
-    draw();
-    requestAnimationFrame(gameLoop);
+function checkGameOver() {
+    let hasValidMove = false;
+
+    for (let i = 0; i < 3; i++) {
+        const piece = currentPieces[i];
+        if (!piece) continue;
+
+        for (let r = 0; r < boardSize; r++) {
+            for (let c = 0; c < boardSize; c++) {
+                if (canPlacePiece(piece, r, c)) {
+                    hasValidMove = true;
+                    break;
+                }
+            }
+            if (hasValidMove) break;
+        }
+        if (hasValidMove) break;
+    }
+
+    if (!hasValidMove && currentPieces.some(p => p !== null)) {
+        document.getElementById("final-score").innerText = score;
+        document.getElementById("game-over-screen").style.display = "flex";
+    }
 }
 
-initEnvironment();
-gameLoop();
+function restartGame() {
+    boardState = Array(boardSize).fill(null).map(() => Array(boardSize).fill(0));
+    score = 0;
+    updateScore();
+    document.getElementById("game-over-screen").style.display = "none";
+    createBoard();
+    generateNewPieces();
+}
+
+function handleResize() {
+    if (activeDrag) {
+        const boardCellWidth = (boardEl.offsetWidth - 16 - (7 * 4)) / 8;
+        const cols = activeDrag.pieceData.structure[0].length;
+        const rows = activeDrag.pieceData.structure.length;
+        dragOverlay.style.width = `${cols * boardCellWidth + (cols - 1) * 4}px`;
+        dragOverlay.style.height = `${rows * boardCellWidth + (rows - 1) * 4}px`;
+    }
+}
+
+initGame();
 </script>
 
 </body>
