@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flappy Kaan - Mobil & Masaüstü Versiyon</title>
+    <style>
+        * {
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Arial', sans-serif;
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            max-width: 100vw;
+            max-height: 100vh;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = 800;
+canvas.height = 600;
+
+// Fotoğraf Ayarı
+const playerImg = new Image();
+playerImg.src = "ben.png.jpg"; 
+let imgLoaded = false;
+playerImg.onload = () => { imgLoaded = true; };
+
+// Oyun Değişkenleri
+let bird = {
+    x: 150,
+    y: 250,
+    width: 75,
+    height: 75,
+    velocity: 0,
+    gravity: 0.4,
+    jumpStrength: -7.5,
+    angle: 0
+};
+
+let pipes = [];
+let clouds = [];
+let stars = [];
+let score = 0;
+let highScore = localStorage.getItem("flappyKaanHighScore") || 0;
+let gameOver = false;
+let isNight = false;
+
+function initEnvironment() {
+    isNight = Math.random() > 0.5;
+    clouds = [];
+    stars = [];
+    
+    for(let i = 0; i < 5; i++) {
+        clouds.push({
+            x: Math.random() * canvas.width * 1.5,
+            y: Math.random() * 150 + 30,
+            speed: Math.random() * 0.5 + 0.2,
+            size: Math.random() * 30 + 20
+        });
+    }
+
+    if(isNight) {
+        for(let i = 0; i < 30; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * 300,
+                size: Math.random() * 2 + 1
+            });
+        }
+    }
+}
+
+function jump(e) {
+    if (e) {
+        e.preventDefault();
+    }
+    if (!gameOver) {
+        bird.velocity = bird.jumpStrength;
+    }
+}
+
+// 💻 BİLGİSAYAR KONTROLLERİ
+document.addEventListener("keydown", (e) => {
+    if (e.code === "Space" || e.code === "ArrowUp") {
+        e.preventDefault();
+        jump();
+    }
+    if (e.key === "r" || e.key === "R") {
+        restartGame();
+    }
+});
+canvas.addEventListener("click", jump);
+
+// 📱 MOBİL KONTROLLER
+canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    if (gameOver) {
+        restartGame();
+    } else {
+        jump();
+    }
+}, { passive: false });
+
+function restartGame() {
+    bird.y = 250;
+    bird.velocity = 0;
+    bird.angle = 0;
+    pipes = [];
+    score = 0;
+    gameOver = false;
+    initEnvironment();
+}
+
+function createPipe() {
+    const gap = 210; 
+    const minHeight = 50;
+    const maxHeight = canvas.height - gap - minHeight - 100;
+    const topHeight = Math.random() * maxHeight + minHeight;
+
+    pipes.push({
+        x: canvas.width,
+        width: 85,
+        topHeight: topHeight,
+        bottomY: topHeight + gap,
+        scored: false
+    });
+}
+
+let pipeInterval = setInterval(() => {
+    if (!gameOver) createPipe();
+}, 2500);
+
+function drawBird() {
+    ctx.save();
+    
+    let centerX = bird.x + bird.width / 2;
+    let centerY = bird.y + bird.height / 2;
+    ctx.translate(centerX, centerY);
+    
+    bird.angle = Math.min(Math.PI / 4, Math.max(-Math.PI / 7, bird.velocity * 0.06));
+    ctx.rotate(bird.angle);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, bird.width / 2, 0, Math.PI * 2);
+    ctx.clip();
+
+    if (imgLoaded) {
+        ctx.drawImage(playerImg, -bird.width / 2, -bird.height / 2, bird.width, bird.height);
+    } else {
+        ctx.fillStyle = "#ffca28";
+        ctx.beginPath();
+        ctx.arc(0, 0, bird.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#000";
+        ctx.font = "38px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("😎", 0, 2);
+    }
+
+    ctx.restore();
+}
+
+function drawPipe(x, y, width, height, isTop) {
+    let grad = ctx.createLinearGradient(x, 0, x + width, 0);
+    grad.addColorStop(0, "#73da2c");
+    grad.addColorStop(0.3, "#9eff6b");
+    grad.addColorStop(0.7, "#58b31d");
+    grad.addColorStop(1, "#3c8210");
+    
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, width, height);
+
+    ctx.strokeStyle = "#1e4707";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x, y, width, height);
+
+    let capHeight = 30;
+    let capX = x - 6;
+    let capWidth = width + 12;
+    let capY = isTop ? (y + height - capHeight) : y;
+
+    ctx.fillRect(capX, capY, capWidth, capHeight);
+    ctx.strokeRect(capX, capY, capWidth, capHeight);
+}
+
+function collision(a, b) {
+    const padding = 12;
+    return (
+        a.x + padding < b.x + b.width &&
+        a.x + a.width - padding > b.x &&
+        a.y + padding < b.y + b.height &&
+        a.y + a.height - padding > b.y
+    );
+}
+
+function update() {
+    if (gameOver) return;
+
+    clouds.forEach(c => {
+        c.x -= c.speed;
+        if(c.x + c.size * 2 < 0) c.x = canvas.width + 50;
+    });
+
+    bird.velocity += bird.gravity;
+    bird.y += bird.velocity;
+
+    if (bird.y < 0 || bird.y + bird.height > canvas.height) {
+        gameOver = true;
+    }
+
+    pipes.forEach(pipe => {
+        pipe.x -= 3.2;
+
+        const topPipe = { x: pipe.x, y: 0, width: pipe.width, height: pipe.topHeight };
+        const bottomPipe = { x: pipe.x, y: pipe.bottomY, width: pipe.width, height: canvas.height - pipe.bottomY };
+
+        if (collision(bird, topPipe) || collision(bird, bottomPipe)) {
+            gameOver = true;
+        }
+
+        if (!pipe.scored && pipe.x + pipe.width < bird.x) {
+            score++;
+            pipe.scored = true;
+            if(score > highScore) {
+                highScore = score;
+                localStorage.setItem("flappyKaanHighScore", highScore);
+            }
+        }
+    });
+
+    pipes = pipes.filter(pipe => pipe.x + pipe.width > -100);
+}
+
+function draw() {
+    if(isNight) {
+        let nightGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        nightGrad.addColorStop(0, "#0c1020");
+        nightGrad.addColorStop(1, "#1d2646");
+        ctx.fillStyle = nightGrad;
+    } else {
+        let dayGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        dayGrad.addColorStop(0, "#4facfe");
+        dayGrad.addColorStop(1, "#00f2fe");
+        ctx.fillStyle = dayGrad;
+    }
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if(isNight) {
+        ctx.fillStyle = "#ffffff";
+        stars.forEach(s => {
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+
+    ctx.fillStyle = isNight ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.65)";
+    clouds.forEach(c => {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
+        ctx.arc(c.x + c.size * 0.6, c.y - c.size * 0.2, c.size * 1.2, 0, Math.PI * 2);
+        ctx.arc(c.x + c.size * 1.3, c.y, c.size * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    pipes.forEach(pipe => {
+        drawPipe(pipe.x, 0, pipe.width, pipe.topHeight, true);
+        drawPipe(pipe.x, pipe.bottomY, pipe.width, canvas.height - pipe.bottomY, false);
+    });
+
+    drawBird();
+
+    ctx.fillStyle = "white";
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 6;
+    ctx.font = "bold 50px Arial";
+    ctx.textAlign = "center";
+    ctx.strokeText(score, canvas.width / 2, 70);
+    ctx.fillText(score, canvas.width / 2, 70);
+
+    if (gameOver) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // KUTU BOYUTU SABİTLENDİ VE GENİŞLETİLDİ
+        ctx.fillStyle = "#2e3440";
+        ctx.strokeStyle = "#4c566a";
+        ctx.lineWidth = 5;
+        ctx.roundRect ? ctx.roundRect(canvas.width / 2 - 175, 130, 350, 280, 15) : ctx.fillRect(canvas.width / 2 - 175, 130, 350, 280);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#ff5e57";
+        ctx.font = "bold 40px Arial";
+        ctx.fillText("OYUN BİTTİ", canvas.width / 2, 185);
+
+        ctx.fillStyle = "#e5e9f0";
+        ctx.font = "24px Arial";
+        ctx.fillText("Skorun: " + score, canvas.width / 2, 240);
+        
+        ctx.fillStyle = "#ebcb8b";
+        ctx.fillText("En Yüksek Skor: " + highScore, canvas.width / 2, 280);
+
+        // YAZI BURADA 2 SATIRA BÖLÜNDÜ (HATA KESİN OLARAK ÇÖZÜLDÜ)
+        ctx.fillStyle = "#a3be8c";
+        ctx.font = "bold italic 16px Arial"; 
+        ctx.fillText("Yeniden başlamak için Ekrana Dokun", canvas.width / 2, 335);
+        
+        ctx.fillStyle = "#81a1c1";
+        ctx.font = "italic 14px Arial";
+        ctx.fillText("veya klavyeden 'R' tuşuna bas", canvas.width / 2, 365);
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+initEnvironment();
+gameLoop();
+</script>
+
+</body>
+</html>
