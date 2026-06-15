@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Block Blast - Kesin Çözüm</title>
+    <title>Block Blast - Kesin Çözüm Versiyonu</title>
     <style>
         * {
             box-sizing: border-box;
@@ -64,7 +64,7 @@
         .cell {
             background: #334155;
             border-radius: 6px;
-            transition: background 0.1s ease, transform 0.1s ease;
+            transition: background 0.1s ease;
         }
 
         .cell.filled {
@@ -98,27 +98,20 @@
             gap: 2px;
             position: absolute;
             cursor: grab;
-            transform-origin: center center;
-            transition: transform 0.1s ease;
-        }
-
-        .piece:active {
-            cursor: grabbing;
         }
 
         .piece-cell {
             border-radius: 4px;
         }
 
-        /* DÜZELTİLEN YER BURASI */
         #drag-overlay {
             position: fixed;
             display: grid;
             gap: 2px;
             z-index: 9999;
             display: none;
-            opacity: 0.95;
-            pointer-events: none; /* Bu parça artık farenin altındaki hücreyi görmesini engellemez */
+            opacity: 0.9;
+            pointer-events: none; /* Altındaki elementlerin algılanmasını engellemez */
         }
 
         .color-1 { background: #ef4444; }
@@ -158,11 +151,6 @@
             border-radius: 8px;
             margin-top: 15px;
             cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .btn-restart:hover {
-            background: #1d4ed8;
         }
     </style>
 </head>
@@ -221,7 +209,6 @@ function initGame() {
     document.getElementById("high-score").innerText = highScore;
     createBoard();
     generateNewPieces();
-    window.addEventListener("resize", handleResize);
 }
 
 function createBoard() {
@@ -246,8 +233,6 @@ function drawBoard() {
         const val = boardState[r][c];
         
         cell.className = "cell";
-        cell.style.background = "";
-        
         if (val > 0) {
             cell.classList.add("filled", `color-${val}`);
         }
@@ -321,7 +306,10 @@ function startDrag(e, index, isTouch) {
     dragOverlay.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
     dragOverlay.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     
-    const boardCellWidth = (boardEl.offsetWidth - 16 - (7 * 4)) / 8; 
+    // Tahtadaki hücre boyutunu tam piksel olarak ölçüyoruz
+    const firstCell = boardEl.querySelector(".cell");
+    const boardCellWidth = firstCell.getBoundingClientRect().width;
+    
     dragOverlay.style.width = `${cols * boardCellWidth + (cols - 1) * 4}px`;
     dragOverlay.style.height = `${rows * boardCellWidth + (rows - 1) * 4}px`;
 
@@ -346,7 +334,7 @@ function startDrag(e, index, isTouch) {
         window.addEventListener("mouseup", onDragEnd);
     }
     
-    document.getElementById(`holder-${index}`).style.opacity = "0.3";
+    document.getElementById(`holder-${index}`).style.opacity = "0.2";
 }
 
 function onDragMove(e) {
@@ -357,9 +345,10 @@ function onDragMove(e) {
 }
 
 function moveDragOverlay(clientX, clientY) {
-    const offset = activeDrag.isTouch ? 70 : 30; 
+    // Mobil ve PC için parmağın/farenin biraz yukarısında taşıma ayarı
+    const offset = activeDrag.isTouch ? 80 : 40; 
     dragOverlay.style.left = `${clientX - dragOverlay.offsetWidth / 2}px`;
-    dragOverlay.style.top = `${clientY - dragOverlay.offsetHeight - offset}px`;
+    dragOverlay.style.top = `${clientY - dragOverlay.offsetHeight / 2 - offset}px`;
 }
 
 function onDragEnd(e) {
@@ -376,14 +365,34 @@ function onDragEnd(e) {
     dragOverlay.style.display = "none";
     document.getElementById(`holder-${activeDrag.index}`).style.opacity = "1";
 
+    // GEOMETRİK ALAN HESAPLAMA METODU (YENİ KESİN ÇÖZÜM)
     const dragRect = dragOverlay.getBoundingClientRect();
-    const dropX = dragRect.left + (dragRect.width / 2);
-    const dropY = dragRect.top + (dragRect.height / 2);
+    const dragCenterX = dragRect.left + (dragRect.width / 2);
+    const dragCenterY = dragRect.top + (dragRect.height / 2);
 
-    const targetCell = document.elementFromPoint(dropX, dropY);
-    if (targetCell && targetCell.classList.contains("cell")) {
-        const targetRow = parseInt(targetCell.dataset.row);
-        const targetCol = parseInt(targetCell.dataset.col);
+    // Tahtadaki tüm hücreleri dön ve parçanın merkezine en yakın hücreyi bul
+    const cells = boardEl.querySelectorAll(".cell");
+    let closestCell = null;
+    let minDistance = Infinity;
+
+    cells.forEach(cell => {
+        const cellRect = cell.getBoundingClientRect();
+        const cellCenterX = cellRect.left + (cellRect.width / 2);
+        const cellCenterY = cellRect.top + (cellRect.height / 2);
+        
+        // Matematiksel mesafe hesaplama
+        const dist = Math.hypot(dragCenterX - cellCenterX, dragCenterY - cellCenterY);
+        
+        // Eğer mesafe bir hücre boyutundan küçükse, parça o hücrenin üzerindedir
+        if (dist < minDistance && dist < cellRect.width * 1.2) {
+            minDistance = dist;
+            closestCell = cell;
+        }
+    });
+
+    if (closestCell) {
+        const targetRow = parseInt(closestCell.dataset.row);
+        const targetCol = parseInt(closestCell.dataset.col);
         
         if (canPlacePiece(activeDrag.pieceData, targetRow, targetCol)) {
             placePiece(activeDrag.pieceData, targetRow, targetCol);
@@ -510,16 +519,6 @@ function restartGame() {
     document.getElementById("game-over-screen").style.display = "none";
     createBoard();
     generateNewPieces();
-}
-
-function handleResize() {
-    if (activeDrag) {
-        const boardCellWidth = (boardEl.offsetWidth - 16 - (7 * 4)) / 8;
-        const cols = activeDrag.pieceData.structure[0].length;
-        const rows = activeDrag.pieceData.structure.length;
-        dragOverlay.style.width = `${cols * boardCellWidth + (cols - 1) * 4}px`;
-        dragOverlay.style.height = `${rows * boardCellWidth + (rows - 1) * 4}px`;
-    }
 }
 
 initGame();
